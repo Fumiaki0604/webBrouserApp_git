@@ -17,8 +17,9 @@
 //選択写真イメージ記録用
 UIImage* pictureImg;
 //非同期通信用
-NSURLConnection *connection = nil;
-NSMutableData *async_data = nil;
+//NSURLConnection *connection = nil;
+NSMutableData *picture_Data = nil;
+
 
 - (void)viewDidLoad
 {
@@ -122,48 +123,44 @@ NSMutableData *async_data = nil;
 
 }
 
-//画像を保存
+//画像を保存(NSURLConnectionを使用し非同期通信で保存)
 - (IBAction)saveBtn:(id)sender {
     //[self performSelectorInBackground:@selector(saveBackground) withObject:nil];
     NSURL *url = [NSURL URLWithString:@"http://test.rapinics.jp/sato/images/image_2.png"];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
-    connection = [[NSURLConnection alloc] initWithRequest:request delegate:self];
+    // NSURLConnectionのインスタンスを作成したら、すぐに指定したURLへリクエストを送信し始める。
+    // delegate指定すると、サーバーからデータを受信したり、エラーが発生したりするとメソッドが呼び出される。
+    [NSURLConnection connectionWithRequest: request delegate: self ];
 }
 
-// 非同期通信 ヘッダーが返ってきた
+// 非同期通信 データ受信時に１回だけ呼び出される。
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response{
-	// データを初期化
-	async_data = [[NSMutableData alloc] initWithData:0];
+	MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:_webViewer animated:YES];
+    hud.labelText = @"画像を保存中";
+    hud.dimBackground = YES;
+    // データを初期化
+	picture_Data = [[NSMutableData alloc] initWithData:0];
+    NSLog(@"ダウンロード開始");
 }
 
-// 非同期通信 ダウンロード中
+// 非同期通信 ダウンロード中(受信したデータをpicture_Dataに追加する)
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data{
 	// データを追加する
-	[async_data appendData:data];
+	[picture_Data appendData:data];
+    NSLog(@"ダウンロード中");
 }
 
+//データ受信終了時に呼び出される
 - (void) connectionDidFinishLoading:(NSURLConnection*)connection
 {
-    NSURL *url = [NSURL URLWithString:@"http://test.rapinics.jp/sato/images/image_2.png"];
-    NSData *data = [NSData dataWithContentsOfURL:url];
-    NSLog(@"%@",url);
-    UIImage *image = [UIImage imageWithData:data];
+    //NSDataをUIImageに変換する
+    UIImage *pic_Image = [[UIImage alloc] initWithData:picture_Data];
+    [self closeHud];
     //画像保存完了時のセレクタ指定
     SEL selector = @selector(onCompleteCapture:didFinishSavingWithError:contextInfo:);
     //画像を保存する
-    UIImageWriteToSavedPhotosAlbum(image, self, selector, NULL);
+    UIImageWriteToSavedPhotosAlbum(pic_Image, self, selector, NULL);
 }
-
-/*-(void)saveBackground
-{
-    NSURL *url = [NSURL URLWithString:@"http://test.rapinics.jp/sato/images/image_2.png"];
-    NSData *data = [NSData dataWithContentsOfURL:url];
-    UIImage *image = [UIImage imageWithData:data];
-    //画像保存完了時のセレクタ指定
-    SEL selector = @selector(onCompleteCapture:didFinishSavingWithError:contextInfo:);
-    //画像を保存する
-    UIImageWriteToSavedPhotosAlbum(image, self, selector, NULL);
-}*/
 
 //画像保存完了時のセレクタ
 - (void)onCompleteCapture:(UIImage *)screenImage
@@ -252,6 +249,7 @@ shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavi
 	// ページのロードが開始されたので、ステータスバーのロード中インジケータを表示する。
 	[UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
     WebAppDelegate* load = [[UIApplication sharedApplication] delegate];
+    //サイトアクセス時、何度もローディング画面が呼ばれるのを防ぐ
     if(load.flag == 0)
     {
         //ローディング画面(ライブラリMBProgressHUD使用)
@@ -266,6 +264,9 @@ shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavi
 - (void)webViewDidFinishLoad:(UIWebView *)webView {
 	// ページのロードが終了したので、ステータスバーのロード中インジケータを非表示にする。
 	[UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
+    WebAppDelegate* load = [[UIApplication sharedApplication] delegate];
+    if(load.flag == 1)
+        //ローディング終了処理
         [self closeHud];
     // ページの「進む」および「戻る」が可能かチェックし、各ボタンの有効／無効を指定する。
     _backBtn.enabled = [webView canGoBack];
@@ -279,6 +280,7 @@ shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavi
     _urlTitle.text = title;
 }
 
+//既に一回ローディング画面が呼ばれていたら、フラグを０にしておく
 -(void)setFlag
 {
     WebAppDelegate* load = [[UIApplication sharedApplication] delegate];
@@ -287,6 +289,7 @@ shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavi
     NSLog(@"%ld",(long)load.flag);
 }
 
+//ローディング終了メソッド
 -(void)closeHud
 {
     [MBProgressHUD hideAllHUDsForView:_webViewer animated:YES];

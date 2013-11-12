@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>479D8C24-944E-4651-ADDF-3BF8C41659A2</string>
+	<key>IDESourceControlProjectName</key>
+	<string>webBrouserApp</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>5C16A2B6-7C27-4649-AF95-1346C76C3CB4</key>
+		<string>https://github.com/Fumiaki0604/webBrouserApp_git.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>webBrouserApp.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>5C16A2B6-7C27-4649-AF95-1346C76C3CB4</key>
+		<string>../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/Fumiaki0604/webBrouserApp_git.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>110</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>5C16A2B6-7C27-4649-AF95-1346C76C3CB4</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>5C16A2B6-7C27-4649-AF95-1346C76C3CB4</string>
+			<key>IDESourceControlWCCName</key>
+			<string>webBrouserApp_git</string>
+		</dict>
+	</array>
+</dict>
+</plist>
