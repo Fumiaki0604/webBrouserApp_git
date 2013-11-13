@@ -69,7 +69,7 @@
                                         <rect key="frame" x="201" y="43" width="113" height="30"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="14"/>
-                                        <textInputTraits key="textInputTraits" keyboardType="webSearch" returnKeyType="search"/>
+                                        <textInputTraits key="textInputTraits" autocapitalizationType="words" keyboardType="webSearch" returnKeyType="search"/>
                                         <connections>
                                             <action selector="googleSearch:" destination="vXZ-lx-hvc" eventType="editingDidEndOnExit" id="Yik-Jp-Ibv"/>
                                         </connections>

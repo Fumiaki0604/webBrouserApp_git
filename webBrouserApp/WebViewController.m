@@ -103,8 +103,6 @@ NSMutableData *picture_Data = nil;
 {
     pictureImg =[info objectForKey:UIImagePickerControllerEditedImage];
     [picker dismissViewControllerAnimated:YES completion:nil];
-    NSURL *photourl = [info objectForKey: UIImagePickerControllerReferenceURL];
-    NSLog(@"%@",photourl);
     NSString *message = @"写真を選択しました";
     UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @""
                                                     message: message
@@ -123,6 +121,11 @@ NSMutableData *picture_Data = nil;
 
 //アップロード
 - (IBAction)upLoad:(id)sender {
+    //ローディング画面
+    MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:_webViewer animated:YES];
+    hud.labelText = @"サーバーへアップロード中";
+    hud.dimBackground = YES;
+    
     NSData* imageData = [[NSData alloc] initWithData:UIImagePNGRepresentation( pictureImg )];
     
     // 送信データの境界
@@ -200,7 +203,7 @@ NSMutableData *picture_Data = nil;
     {
         NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
         NSLog(@"%d",httpResponse.statusCode);
-        
+        [self closeHud];
         if(httpResponse.statusCode == 200)
         {
             UIAlertView *alert = [[UIAlertView alloc]initWithTitle:@"アップロード完了" message:@"アップロード完了しました"
@@ -270,7 +273,12 @@ NSMutableData *picture_Data = nil;
 //検索フィールド
 - (IBAction)googleSearch:(id)sender {
     NSString *query = [_searchBar.text stringByReplacingOccurrencesOfString:@" " withString:@"+"];
-    NSURL *queryUrl = [NSURL URLWithString:[NSString stringWithFormat:@"http://www.google.co.jp/search?q=%@", query]];
+    NSLog(@"%@",query);
+    //検索文字列をURLエンコード(日本語検索のため)
+    NSString *escapedUrlString = [query stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    NSLog(@"%@",escapedUrlString);
+    NSURL *queryUrl = [NSURL URLWithString:[NSString stringWithFormat:@"http://www.google.co.jp/search?q=%@", escapedUrlString]];
+    NSLog(@"%@",queryUrl);
     NSURLRequest *queryRequest = [NSURLRequest requestWithURL:queryUrl];
     [_webViewer loadRequest:queryRequest];
     NSLog(@"検索しました");
@@ -292,7 +300,6 @@ NSMutableData *picture_Data = nil;
     [_webViewer goBack];
 }
 
-//-----------検証用--------------
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event{
     UITouch *touch = [[event allTouches] anyObject];
     NSLog(@"タッチしました");
@@ -308,27 +315,27 @@ NSMutableData *picture_Data = nil;
 shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
 {
     // リンクがクリックされたとき
-    NSString* url = [webView stringByEvaluatingJavaScriptFromString:@"document.URL"];
+    NSString* clickUrl = [webView stringByEvaluatingJavaScriptFromString:@"document.URL"];
     if (navigationType == UIWebViewNavigationTypeLinkClicked){
-        if ([self isTwitterURL:[request URL]]) { // yes
-            // TwitterのURLの場合はログに書く
-            NSLog(@"Twitter");
+        if ([self isZipURL:[request URL]]) { // yes
+            // ZipのURLの場合はログに書く(検証用)
+            NSLog(@"Zip");
             return NO;
         }
-        NSLog(@"%@",url);
+        NSLog(@"%@",clickUrl);
         NSLog(@"リンクをクリック");
         [self setFlag];
     }
     return YES;
 }
 
-- (BOOL)isTwitterURL:(NSURL *)url
+- (BOOL)isZipURL:(NSURL *)clickUrl
 {
-    NSString *urlString = [url absoluteString];
-    NSString *twitterUrlString = @"twitter.com";
+    NSString *urlString = [clickUrl absoluteString];
+    NSString *zipUrlString = @".zip";
     
-    // Twitterページか?
-    NSRange range = [urlString rangeOfString:twitterUrlString];
+    // Zipか?
+    NSRange range = [urlString rangeOfString:zipUrlString];
     if (range.location != NSNotFound) {
         return YES;
     } else {
