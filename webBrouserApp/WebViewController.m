@@ -7,6 +7,7 @@
 //
 
 #import "WebViewController.h"
+#import "MyNSURLConnection.h"
 
 @interface WebViewController ()
 
@@ -17,9 +18,11 @@
 //選択写真イメージ記録用
 UIImage* pictureImg;
 //非同期通信用
-//NSURLConnection *connection = nil;
 NSMutableData *picture_Data = nil;
-
+// アップロードURL
+#define UPLOAD_URL @"http://test.rapinics.jp/sato/receive.php"
+// アップロードファイルのパラメーター名
+#define UPLOAD_PARAM @"upfile"
 
 - (void)viewDidLoad
 {
@@ -120,46 +123,134 @@ NSMutableData *picture_Data = nil;
 
 //アップロード
 - (IBAction)upLoad:(id)sender {
-
+    NSData* imageData = [[NSData alloc] initWithData:UIImagePNGRepresentation( pictureImg )];
+    
+    // 送信データの境界
+	NSString *boundary = @"1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	// アップロードする際のファイル名
+	NSDateFormatter *dateFormatter = [[NSDateFormatter alloc]init];
+	[dateFormatter setDateFormat:@"yyyyMMddHHmmss"];
+	NSString *uploadFileName = [dateFormatter stringFromDate:[NSDate date]];
+	// 送信するデータ（前半）
+	NSMutableString *sendDataStringPrev = [NSMutableString stringWithString:@"--"];
+	[sendDataStringPrev appendString:boundary];
+	[sendDataStringPrev appendString:@"\r\n"];
+	[sendDataStringPrev appendString:[NSString stringWithFormat:@"Content-Disposition: form-data; name=\"%@\"; filename=\"%@.jpg\"\r\n",UPLOAD_PARAM,uploadFileName]];
+	[sendDataStringPrev appendString:@"Content-Type: image/jpeg\r\n\r\n"];
+	// 送信するデータ（後半）
+	NSMutableString *sendDataStringNext = [NSMutableString stringWithString:@"\r\n"];
+	[sendDataStringNext appendString:@"--"];
+	[sendDataStringNext appendString:boundary];
+	[sendDataStringNext appendString:@"--"];
+	
+	// 送信データの生成
+	NSMutableData *sendData = [NSMutableData data];
+	[sendData appendData:[sendDataStringPrev dataUsingEncoding:NSUTF8StringEncoding]];
+	[sendData appendData:imageData];
+	[sendData appendData:[sendDataStringNext dataUsingEncoding:NSUTF8StringEncoding]];
+    
+    // リクエストヘッダー
+	NSDictionary *requestHeader = [NSDictionary dictionaryWithObjectsAndKeys:
+								   [NSString stringWithFormat:@"%d",[sendData length]],@"Content-Length",
+								   [NSString stringWithFormat:@"multipart/form-data;boundary=%@",boundary],@"Content-Type",nil];
+	
+	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:UPLOAD_URL]];
+	[request setAllHTTPHeaderFields:requestHeader];
+	[request setHTTPMethod:@"POST"];
+	[request setHTTPBody:sendData];
+	
+	MyNSURLConnection *conn = [[MyNSURLConnection alloc]
+                               initWithRequest:request delegate:self startImmediately:NO];
+    conn.tag=2;
+    //通信開始
+    [conn start];
 }
+
 
 //画像を保存(NSURLConnectionを使用し非同期通信で保存)
 - (IBAction)saveBtn:(id)sender {
     //[self performSelectorInBackground:@selector(saveBackground) withObject:nil];
-    NSURL *url = [NSURL URLWithString:@"http://test.rapinics.jp/sato/images/image_2.png"];
+    NSURL *url = [NSURL URLWithString:@"http://test.rapinics.jp/sato/images/image_4.jpg"];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
-    // NSURLConnectionのインスタンスを作成したら、すぐに指定したURLへリクエストを送信し始める。
+    // NSURLConnectionのインスタンスを作成したら、すぐに指定したURLへリクエストを送信。
     // delegate指定すると、サーバーからデータを受信したり、エラーが発生したりするとメソッドが呼び出される。
-    [NSURLConnection connectionWithRequest: request delegate: self ];
+    // startImmediately:NOでコネクションのみ作成し通信は行わない
+    MyNSURLConnection *conn = [[MyNSURLConnection alloc]
+                               initWithRequest:request delegate:self startImmediately:NO];
+    conn.tag=1;
+    //通信開始
+    [conn start];
 }
 
 // 非同期通信 データ受信時に１回だけ呼び出される。
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response{
-	MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:_webViewer animated:YES];
-    hud.labelText = @"画像を保存中";
-    hud.dimBackground = YES;
-    // データを初期化
-	picture_Data = [[NSMutableData alloc] initWithData:0];
-    NSLog(@"ダウンロード開始");
+    MyNSURLConnection *conn = (MyNSURLConnection*)connection;
+    //保存時
+    if(conn.tag == 1)
+    {
+        MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:_webViewer animated:YES];
+        hud.labelText = @"画像を保存中";
+        hud.dimBackground = YES;
+        // データを初期化
+        picture_Data = [[NSMutableData alloc] initWithData:0];
+        NSLog(@"ダウンロード開始");
+    }
+    //アップロード時
+    else if(conn.tag == 2)
+    {
+        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+        NSLog(@"%d",httpResponse.statusCode);
+        
+        if(httpResponse.statusCode == 200)
+        {
+            UIAlertView *alert = [[UIAlertView alloc]initWithTitle:@"アップロード完了" message:@"アップロード完了しました"
+                                                          delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+            [alert show];
+        }
+        else
+        {
+            UIAlertView *alert = [[UIAlertView alloc]initWithTitle:@"エラー" message:@"レスポンスエラー"
+                                                          delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+            [alert show];
+        }
+    }
 }
 
 // 非同期通信 ダウンロード中(受信したデータをpicture_Dataに追加する)
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data{
-	// データを追加する
-	[picture_Data appendData:data];
-    NSLog(@"ダウンロード中");
+    MyNSURLConnection *conn = (MyNSURLConnection*)connection;
+    if(conn.tag == 1)
+    {
+        // データを追加する
+        [picture_Data appendData:data];
+        NSLog(@"ダウンロード中");
+    }
 }
 
 //データ受信終了時に呼び出される
 - (void) connectionDidFinishLoading:(NSURLConnection*)connection
 {
-    //NSDataをUIImageに変換する
-    UIImage *pic_Image = [[UIImage alloc] initWithData:picture_Data];
-    [self closeHud];
-    //画像保存完了時のセレクタ指定
-    SEL selector = @selector(onCompleteCapture:didFinishSavingWithError:contextInfo:);
-    //画像を保存する
-    UIImageWriteToSavedPhotosAlbum(pic_Image, self, selector, NULL);
+    MyNSURLConnection *conn = (MyNSURLConnection*)connection;
+    if(conn.tag == 1)
+    {
+        //NSDataをUIImageに変換する
+        UIImage *pic_Image = [[UIImage alloc] initWithData:picture_Data];
+        [self closeHud];
+            //画像保存完了時のセレクタ指定
+        SEL selector = @selector(onCompleteCapture:didFinishSavingWithError:contextInfo:);
+        //画像を保存する
+        UIImageWriteToSavedPhotosAlbum(pic_Image, self, selector, NULL);
+    }
+}
+
+// エラーが発生した場合
+-(void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
+{
+    MyNSURLConnection *conn = (MyNSURLConnection*)connection;
+    if(conn.tag == 2){
+	UIAlertView *alert = [[UIAlertView alloc]initWithTitle:@"エラー" message:@"ネットワークエラー"
+												  delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+        [alert show];}
 }
 
 //画像保存完了時のセレクタ

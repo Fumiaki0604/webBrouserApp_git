@@ -24,6 +24,7 @@
 		53A14E2C182A2ACB00CED1B5 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 53A14E0B182A2ACB00CED1B5 /* UIKit.framework */; };
 		53A14E34182A2ACB00CED1B5 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 53A14E32182A2ACB00CED1B5 /* InfoPlist.strings */; };
 		53A14E36182A2ACB00CED1B5 /* webBrouserAppTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 53A14E35182A2ACB00CED1B5 /* webBrouserAppTests.m */; };
+		53A4CE9A183318CE00D443A8 /* MyNSURLConnection.m in Sources */ = {isa = PBXBuildFile; fileRef = 53A4CE99183318CE00D443A8 /* MyNSURLConnection.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +61,8 @@
 		53A14E31182A2ACB00CED1B5 /* webBrouserAppTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "webBrouserAppTests-Info.plist"; sourceTree = "<group>"; };
 		53A14E33182A2ACB00CED1B5 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		53A14E35182A2ACB00CED1B5 /* webBrouserAppTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = webBrouserAppTests.m; sourceTree = "<group>"; };
+		53A4CE98183318CE00D443A8 /* MyNSURLConnection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MyNSURLConnection.h; sourceTree = "<group>"; };
+		53A4CE99183318CE00D443A8 /* MyNSURLConnection.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MyNSURLConnection.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -131,6 +134,8 @@
 				53A14E20182A2ACB00CED1B5 /* WebViewController.m */,
 				53A14E22182A2ACB00CED1B5 /* Images.xcassets */,
 				53A14E0E182A2ACB00CED1B5 /* Supporting Files */,
+				53A4CE98183318CE00D443A8 /* MyNSURLConnection.h */,
+				53A4CE99183318CE00D443A8 /* MyNSURLConnection.m */,
 			);
 			path = webBrouserApp;
 			sourceTree = "<group>";
@@ -264,6 +269,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				53A14E14182A2ACB00CED1B5 /* main.m in Sources */,
+				53A4CE9A183318CE00D443A8 /* MyNSURLConnection.m in Sources */,
 				53A14E21182A2ACB00CED1B5 /* WebViewController.m in Sources */,
 				53A14E18182A2ACB00CED1B5 /* WebAppDelegate.m in Sources */,
 				531DCAFE182B470B00FFAF25 /* MBProgressHUD.m in Sources */,
