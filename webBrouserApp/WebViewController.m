@@ -8,6 +8,7 @@
 
 #import "WebViewController.h"
 #import "MyNSURLConnection.h"
+#import "ZipArchive.h"
 
 @interface WebViewController ()
 
@@ -46,6 +47,7 @@ NSMutableData *picture_Data = nil;
     //「進む」、「戻る」ボタンを無効化する。
     _backBtn.enabled = NO;
     _fwdBtn.enabled = NO;
+    _upLoad.enabled = NO;
     
     NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:@"http://test.rapinics.jp/sato/index.html"]];
     //NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:@"http://www.yahoo.co.jp"]];
@@ -103,6 +105,7 @@ NSMutableData *picture_Data = nil;
 {
     pictureImg =[info objectForKey:UIImagePickerControllerEditedImage];
     [picker dismissViewControllerAnimated:YES completion:nil];
+    _upLoad.enabled = YES;
     NSString *message = @"写真を選択しました";
     UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @""
                                                     message: message
@@ -173,7 +176,7 @@ NSMutableData *picture_Data = nil;
 //画像を保存(NSURLConnectionを使用し非同期通信で保存)
 - (IBAction)saveBtn:(id)sender {
     //[self performSelectorInBackground:@selector(saveBackground) withObject:nil];
-    NSURL *url = [NSURL URLWithString:@"http://test.rapinics.jp/sato/images/image_4.jpg"];
+    NSURL *url = [NSURL URLWithString:@"http://test.rapinics.jp/sato/images/image_5.png"];
     NSURLRequest *request = [NSURLRequest requestWithURL:url];
     // NSURLConnectionのインスタンスを作成したら、すぐに指定したURLへリクエストを送信。
     // delegate指定すると、サーバーからデータを受信したり、エラーが発生したりするとメソッドが呼び出される。
@@ -243,6 +246,10 @@ NSMutableData *picture_Data = nil;
         SEL selector = @selector(onCompleteCapture:didFinishSavingWithError:contextInfo:);
         //画像を保存する
         UIImageWriteToSavedPhotosAlbum(pic_Image, self, selector, NULL);
+    }
+    else if (conn.tag == 2)
+    {
+        _upLoad.enabled = NO;
     }
 }
 
@@ -315,23 +322,48 @@ NSMutableData *picture_Data = nil;
 shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
 {
     // リンクがクリックされたとき
-    NSString* clickUrl = [webView stringByEvaluatingJavaScriptFromString:@"document.URL"];
+    NSString *clickUrl = [webView stringByEvaluatingJavaScriptFromString:@"document.URL"];
     if (navigationType == UIWebViewNavigationTypeLinkClicked){
         if ([self isZipURL:[request URL]]) { // yes
             // ZipのURLの場合はログに書く(検証用)
             NSLog(@"Zip");
+            // 解凍するファイル
+            NSString *nsStringFullPath = [ NSHomeDirectory() stringByAppendingPathComponent:@"Documents" ];
+            nsStringFullPath = [ nsStringFullPath stringByAppendingString:@"/" ];
+            nsStringFullPath = [ nsStringFullPath stringByAppendingString:@"images.zip" ];
+            NSLog(@"%@",nsStringFullPath);
+            // 解凍先フォルダ
+            NSString *nsStringZipFolder = [ @"Documents/" stringByAppendingString:@"folder" ];
+            NSString *outdir = [ NSHomeDirectory() stringByAppendingPathComponent:nsStringZipFolder ];
+            NSLog(@"%@",outdir);
+            
+            ZipArchive* zipArchive = [[ZipArchive alloc] init];
+            // zipを開く
+            [zipArchive UnzipOpenFile:nsStringFullPath ];
+            //[zipArchive UnzipOpenFile:@"http://test.rapinics.jp/sato/Zipfile/images.zip" ];
+            // zipをフォルダーに展開する。ファイルが既に存在したら上書きする。
+            BOOL result = [zipArchive UnzipFileTo:outdir overWrite:true ];
+            
+            if(result == YES ){
+                NSLog( @"zip解凍成功" ); 
+            }
+            else{
+                // エラー時
+                NSLog( @"zip解凍エラー");
+            }
+            [zipArchive UnzipCloseFile];
             return NO;
         }
-        NSLog(@"%@",clickUrl);
-        NSLog(@"リンクをクリック");
-        [self setFlag];
     }
+    NSLog(@"リンクをクリック");
+    //[self setFlag];
     return YES;
 }
 
 - (BOOL)isZipURL:(NSURL *)clickUrl
 {
     NSString *urlString = [clickUrl absoluteString];
+    NSLog(@"%@",urlString);
     NSString *zipUrlString = @".zip";
     
     // Zipか?
