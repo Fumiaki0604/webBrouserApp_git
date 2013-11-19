@@ -20,8 +20,14 @@
 UIImage* pictureImg;
 //非同期通信用
 NSMutableData *picture_Data = nil;
+NSMutableData *zip_Data = nil;
+
+NSString *clickUrl;
+//リンク先のアドレス
+NSString *urlString;
 // アップロードURL
 #define UPLOAD_URL @"http://test.rapinics.jp/sato/receive.php"
+
 // アップロードファイルのパラメーター名
 #define UPLOAD_PARAM @"upfile"
 
@@ -50,7 +56,6 @@ NSMutableData *picture_Data = nil;
     _upLoad.enabled = NO;
     
     NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:@"http://test.rapinics.jp/sato/index.html"]];
-    //NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:@"http://www.yahoo.co.jp"]];
     [_webViewer loadRequest:req];
     // Do any additional setup after loading the view, typically from a nib.}
 }
@@ -157,7 +162,7 @@ NSMutableData *picture_Data = nil;
     
     // リクエストヘッダー
 	NSDictionary *requestHeader = [NSDictionary dictionaryWithObjectsAndKeys:
-								   [NSString stringWithFormat:@"%d",[sendData length]],@"Content-Length",
+								   [NSString stringWithFormat:@"%lu",(unsigned long)[sendData length]],@"Content-Length",
 								   [NSString stringWithFormat:@"multipart/form-data;boundary=%@",boundary],@"Content-Type",nil];
 	
 	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:UPLOAD_URL]];
@@ -188,6 +193,80 @@ NSMutableData *picture_Data = nil;
     [conn start];
 }
 
+//Webページのロード（表示）の開始前(YESでWebページの読み込みを行う、NOは何も処理を行わない)
+- (BOOL)webView:(UIWebView *)webView
+shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
+{
+    clickUrl = [webView stringByEvaluatingJavaScriptFromString:@"document.URL"];
+    // リンクがクリックされたとき
+    if (navigationType == UIWebViewNavigationTypeLinkClicked){
+       //zipか否か
+        if ([self isZipURL:[request URL]]) { // yes
+            // ZipのURLの場合はログに書く(検証用)
+            NSLog(@"Zip");
+            NSLog(@"%@",urlString);
+            
+            // ホームディレクトリを取得
+            NSString *homeDir = [ NSHomeDirectory() stringByAppendingPathComponent:@"Documents"];
+
+            //保存先のディレクトリのパスを作成
+            NSString *saveZipDir = [homeDir stringByAppendingPathComponent:@"folder/"];
+            NSLog(@"%@",saveZipDir);
+            // ファイルマネージャを作成
+            NSFileManager *fileManager = [NSFileManager defaultManager];
+            NSError *error;
+
+            //ディレクトリの作成
+            if ([[NSFileManager defaultManager] fileExistsAtPath:homeDir])
+            {
+            
+                BOOL d_result = [fileManager createDirectoryAtPath:saveZipDir
+                                     withIntermediateDirectories:YES
+                                                      attributes:nil
+                                                           error:&error];
+                
+                if (d_result) {
+                    NSLog(@"ディレクトリの作成に成功：%@", saveZipDir);
+                } else {
+                    NSLog(@"ディレクトリの作成に失敗：%@", error.description);
+                }
+            }
+            
+            NSURL* zipUrl = [NSURL URLWithString:urlString];
+            NSURLRequest *request = [NSURLRequest requestWithURL:zipUrl];
+            
+            // NSURLConnectionのインスタンスを作成したら、すぐに指定したURLへリクエストを送信。
+            // delegate指定すると、サーバーからデータを受信したり、エラーが発生したりするとメソッドが呼び出される。
+            // startImmediately:NOでコネクションのみ作成し通信は行わない
+            MyNSURLConnection *conn = [[MyNSURLConnection alloc]
+                                       initWithRequest:request delegate:self startImmediately:NO];
+            conn.tag=3;
+            //通信開始
+            [conn start];
+            
+            return NO;
+        }
+        NSLog(@"リンクをクリック");
+        [self setFlag];
+    }
+    return YES;
+}
+
+//リンクがZip否かの判定
+- (BOOL)isZipURL:(NSURL *)clickUrl
+{
+    urlString = [clickUrl absoluteString];
+    NSString *zipUrlString = @".zip";
+    
+    // Zipか?
+    NSRange range = [urlString rangeOfString:zipUrlString];
+    if (range.location != NSNotFound) {
+        return YES;
+    } else {
+        return NO;
+    }
+}
+
 // 非同期通信 データ受信時に１回だけ呼び出される。
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response{
     MyNSURLConnection *conn = (MyNSURLConnection*)connection;
@@ -205,7 +284,7 @@ NSMutableData *picture_Data = nil;
     else if(conn.tag == 2)
     {
         NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
-        NSLog(@"%d",httpResponse.statusCode);
+        NSLog(@"%ld",(long)httpResponse.statusCode);
         [self closeHud];
         if(httpResponse.statusCode == 200)
         {
@@ -220,6 +299,16 @@ NSMutableData *picture_Data = nil;
             [alert show];
         }
     }
+    //zipリンク押下時
+    else
+    {
+        MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:_webViewer animated:YES];
+        hud.labelText = @"zipファイルを保存中";
+        hud.dimBackground = YES;
+        // データを初期化
+        zip_Data = [[NSMutableData alloc] initWithData:0];
+        NSLog(@"zipファイルのダウンロード開始");
+    }
 }
 
 // 非同期通信 ダウンロード中(受信したデータをpicture_Dataに追加する)
@@ -230,6 +319,11 @@ NSMutableData *picture_Data = nil;
         // データを追加する
         [picture_Data appendData:data];
         NSLog(@"ダウンロード中");
+    }
+    else if(conn.tag == 3)
+    {
+        [zip_Data appendData:data];
+        NSLog(@"zipデータダウンロード中");
     }
 }
 
@@ -250,6 +344,40 @@ NSMutableData *picture_Data = nil;
     else if (conn.tag == 2)
     {
         _upLoad.enabled = NO;
+    }
+    //zipリンク押下時
+    else
+    {
+        // ホームディレクトリを取得
+        NSString *homeDir = [ NSHomeDirectory() stringByAppendingPathComponent:@"Documents"];
+        // 書き込みたいファイルのパスを作成
+        NSString *filePath = [homeDir stringByAppendingPathComponent:@"images.zip"];
+        // ファイルに書き込む
+        [zip_Data writeToFile:filePath atomically:YES];
+        // 解凍するファイル
+        NSString *nsStringFullPath = [ homeDir stringByAppendingString:@"/" ];
+        nsStringFullPath = [ nsStringFullPath stringByAppendingString:@"images.zip" ];
+        NSLog(@"%@",nsStringFullPath);
+        // 解凍先フォルダ
+        NSString *nsStringZipFolder = [ @"Documents/" stringByAppendingString:@"folder" ];
+        NSString *outdir = [ NSHomeDirectory() stringByAppendingPathComponent:nsStringZipFolder ];
+        NSLog(@"%@",outdir);
+        
+        ZipArchive* zipArchive = [[ZipArchive alloc] init];
+        // zipを開く
+        [zipArchive UnzipOpenFile:nsStringFullPath ];
+        // zipをフォルダーに展開する。ファイルが既に存在したら上書きする。
+        BOOL result = [zipArchive UnzipFileTo:outdir overWrite:true ];
+        
+        if(result == YES ){
+            NSLog( @"zip解凍成功" );
+        }
+        else{
+            // エラー時
+            NSLog( @"zip解凍エラー");
+        }
+        [self closeHud];
+        [zipArchive UnzipCloseFile];
     }
 }
 
@@ -317,63 +445,7 @@ NSMutableData *picture_Data = nil;
         NSLog(@"ボタンタッチ");}
 }
 
-//Webページのロード（表示）の開始前
-- (BOOL)webView:(UIWebView *)webView
-shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
-{
-    // リンクがクリックされたとき
-    NSString *clickUrl = [webView stringByEvaluatingJavaScriptFromString:@"document.URL"];
-    if (navigationType == UIWebViewNavigationTypeLinkClicked){
-        if ([self isZipURL:[request URL]]) { // yes
-            // ZipのURLの場合はログに書く(検証用)
-            NSLog(@"Zip");
-            // 解凍するファイル
-            NSString *nsStringFullPath = [ NSHomeDirectory() stringByAppendingPathComponent:@"Documents" ];
-            nsStringFullPath = [ nsStringFullPath stringByAppendingString:@"/" ];
-            nsStringFullPath = [ nsStringFullPath stringByAppendingString:@"images.zip" ];
-            NSLog(@"%@",nsStringFullPath);
-            // 解凍先フォルダ
-            NSString *nsStringZipFolder = [ @"Documents/" stringByAppendingString:@"folder" ];
-            NSString *outdir = [ NSHomeDirectory() stringByAppendingPathComponent:nsStringZipFolder ];
-            NSLog(@"%@",outdir);
-            
-            ZipArchive* zipArchive = [[ZipArchive alloc] init];
-            // zipを開く
-            [zipArchive UnzipOpenFile:nsStringFullPath ];
-            //[zipArchive UnzipOpenFile:@"http://test.rapinics.jp/sato/Zipfile/images.zip" ];
-            // zipをフォルダーに展開する。ファイルが既に存在したら上書きする。
-            BOOL result = [zipArchive UnzipFileTo:outdir overWrite:true ];
-            
-            if(result == YES ){
-                NSLog( @"zip解凍成功" ); 
-            }
-            else{
-                // エラー時
-                NSLog( @"zip解凍エラー");
-            }
-            [zipArchive UnzipCloseFile];
-            return NO;
-        }
-    }
-    NSLog(@"リンクをクリック");
-    //[self setFlag];
-    return YES;
-}
 
-- (BOOL)isZipURL:(NSURL *)clickUrl
-{
-    NSString *urlString = [clickUrl absoluteString];
-    NSLog(@"%@",urlString);
-    NSString *zipUrlString = @".zip";
-    
-    // Zipか?
-    NSRange range = [urlString rangeOfString:zipUrlString];
-    if (range.location != NSNotFound) {
-        return YES;
-    } else {
-        return NO;
-    }
-}
 //----------------------
 - (void)webViewDidStartLoad:(UIWebView *)webView {
 	// ページのロードが開始されたので、ステータスバーのロード中インジケータを表示する。
